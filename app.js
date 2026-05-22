@@ -24,6 +24,61 @@ let selectedDice1 = null;
 let selectedDice2 = null;
 window.isMoving = false;
 window.movingPlayerId = null;
+window.isWaitingNextTurn = false;
+window.currentIsDouble = false;
+window.gameMode = 'normal';
+window.historyStack = [];
+
+// --- 드래그 앤 드롭 로직 ---
+const playerSetup = document.getElementById('player-setup');
+let draggedItem = null;
+
+playerSetup.addEventListener('dragstart', (e) => {
+  let target = e.target;
+  if (!target.classList.contains('draggable-item')) {
+    target = target.closest('.draggable-item');
+  }
+  if (target) {
+    draggedItem = target;
+    setTimeout(() => target.classList.add('dragging'), 0);
+  }
+});
+
+playerSetup.addEventListener('dragend', (e) => {
+  let target = e.target;
+  if (!target.classList.contains('draggable-item')) {
+    target = target.closest('.draggable-item');
+  }
+  if (target) {
+    target.classList.remove('dragging');
+    draggedItem = null;
+  }
+});
+
+playerSetup.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const afterElement = getDragAfterElement(playerSetup, e.clientY);
+  if (draggedItem) {
+    if (afterElement == null) {
+      playerSetup.appendChild(draggedItem);
+    } else {
+      playerSetup.insertBefore(draggedItem, afterElement);
+    }
+  }
+});
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.draggable-item:not(.dragging)')];
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
 
 const board = document.getElementById('board');
 
@@ -71,6 +126,24 @@ function renderBoard(data) {
     space.style.gridColumn = col;
     space.style.gridRow = row;
     
+    // 소유자가 있으면 텍스트와 배경색 반영
+    if (spaceData.owner !== undefined) {
+      const ownerColor = window.players.find(p => p.id === spaceData.owner).color;
+      space.style.borderBottom = `5px solid ${ownerColor}`;
+      space.style.backgroundColor = ownerColor + "4D";
+      space.classList.add("owned-text");
+    }
+    
+    space.onclick = () => {
+      if (window.isWaitingNextTurn) {
+        const currentPlayer = window.players[window.currentPlayerIndex];
+        currentPlayer.position = i;
+        drawTokens();
+        window.isWaitingNextTurn = false;
+        handleLandEvent(currentPlayer, window.currentIsDouble);
+      }
+    };
+    
     board.appendChild(space);
   }
 }
@@ -109,18 +182,28 @@ function drawTokens() {
 window.startGame = () => {
   if (window.boardData.length === 0) return;
 
+  const modeRadios = document.getElementsByName('gameMode');
+  for (let radio of modeRadios) {
+    if (radio.checked) {
+      window.gameMode = radio.value;
+      break;
+    }
+  }
+
+  const inputs = document.querySelectorAll('.player-input');
   const colors = ["#FF5252", "#448AFF", "#FFC107", "#4CAF50"];
   window.players = [
-    { id: 0, name: document.getElementById('p1').value, position: 0, color: colors[0], money: 500 },
-    { id: 1, name: document.getElementById('p2').value, position: 0, color: colors[1], money: 500 },
-    { id: 2, name: document.getElementById('p3').value, position: 0, color: colors[2], money: 500 },
-    { id: 3, name: document.getElementById('p4').value, position: 0, color: colors[3], money: 500 }
+    { id: 0, name: inputs[0].value, position: 0, color: colors[0], money: 500 },
+    { id: 1, name: inputs[1].value, position: 0, color: colors[1], money: 500 },
+    { id: 2, name: inputs[2].value, position: 0, color: colors[2], money: 500 },
+    { id: 3, name: inputs[3].value, position: 0, color: colors[3], money: 500 }
   ];
 
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('scoreboard').style.display = 'flex';
   document.getElementById('dice-screen').style.display = 'block';
   
+  saveState(); // 게임 초기 상태 저장
   updateScoreBoard();
   drawTokens(); 
   updateTurnUI();
@@ -176,14 +259,18 @@ window.movePlayer = () => {
         handleLandEvent(currentPlayer, isDouble);
       }, 300);
     }
-  }, 500); 
+  }, 200); 
 };
 
 function updateScoreBoard() {
   window.players.forEach(p => {
     const scoreEl = document.getElementById(`score-${p.id}`);
     if (scoreEl) {
-      scoreEl.innerText = `${p.name}: ${p.money}만`;
+      if (window.gameMode === 'normal') {
+        scoreEl.innerText = `${p.name}`;
+      } else {
+        scoreEl.innerText = `${p.name}: ${p.money}만`;
+      }
       scoreEl.style.color = p.color;
     }
   });
@@ -210,7 +297,7 @@ window.handleLandEvent = (player, isDouble) => {
       descEl.innerText = `주인이 없는 곳입니다.\n땅 구매가: ${currentSpace.price_land}만원`;
       btnEl.innerHTML = `
         <button class="start-btn" style="background-color: #4CAF50;" onclick="buyLand(${spaceIndex}, ${currentSpace.price_land}, ${isDouble})">구매하기</button>
-        <button class="start-btn" style="background-color: #9e9e9e;" onclick="endTurn(${isDouble})">건너뛰기</button>
+        <button class="start-btn" style="background-color: #9e9e9e;" onclick="prepareNextTurn(${isDouble})">건너뛰기</button>
       `;
     } else if (currentSpace.owner !== player.id) {
       // 남의 땅
@@ -239,15 +326,15 @@ window.handleLandEvent = (player, isDouble) => {
 
       if (buildHTML === '') {
         descEl.innerText = "더 이상 지을 건물이 없습니다. 편히 쉬세요!";
-        btnEl.innerHTML = `<button class="start-btn" onclick="endTurn(${isDouble})">확인</button>`;
+        btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
       } else {
         descEl.innerText = "내 영지입니다! 건물을 추가하시겠습니까?";
-        btnEl.innerHTML = buildHTML + `<br><br><button class="start-btn" style="background-color: #9e9e9e;" onclick="endTurn(${isDouble})">건설 안 함</button>`;
+        btnEl.innerHTML = buildHTML + `<br><br><button class="start-btn" style="background-color: #9e9e9e;" onclick="prepareNextTurn(${isDouble})">건설 안 함</button>`;
       }
     }
   } else {
     descEl.innerText = currentSpace.description || "특수 칸입니다.";
-    btnEl.innerHTML = `<button class="start-btn" onclick="endTurn(${isDouble})">확인</button>`;
+    btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
   }
 };
 
@@ -255,20 +342,22 @@ window.handleLandEvent = (player, isDouble) => {
 window.buyLand = (spaceId, price, isDouble) => {
   const player = window.players[window.currentPlayerIndex];
   
-  if (player.money >= price) {
-    player.money -= price; 
+  if (window.gameMode === 'normal' || player.money >= price) {
+    if (window.gameMode !== 'normal') player.money -= price; 
     window.boardData[spaceId].owner = player.id; 
     window.boardData[spaceId].buildings = { villa: false, building: false, hotel: false };
     
     const spaceEl = document.getElementById(`space-${spaceId}`);
     spaceEl.style.borderBottom = `5px solid ${player.color}`;
+    spaceEl.style.backgroundColor = player.color + "4D"; // 투명도 30% 배경색 추가
+    spaceEl.classList.add("owned-text");
     
     updateScoreBoard();
-    alert(`${window.boardData[spaceId].name}을(를) 구매했습니다!`);
-    endTurn(isDouble);
+    // 구매 완료 후 다시 이벤트를 호출하여 건물을 지을 수 있게 함
+    handleLandEvent(player, isDouble);
   } else {
     alert("자금이 부족합니다! 자동으로 턴을 넘깁니다.");
-    endTurn(isDouble);
+    prepareNextTurn(isDouble);
   }
 };
 
@@ -277,8 +366,8 @@ window.buildBuilding = (spaceId, type, price, isDouble) => {
   const player = window.players[window.currentPlayerIndex];
   const space = window.boardData[spaceId];
 
-  if (player.money >= price) {
-    player.money -= price;
+  if (window.gameMode === 'normal' || player.money >= price) {
+    if (window.gameMode !== 'normal') player.money -= price;
     space.buildings[type] = true;
     
     const spaceEl = document.getElementById(`space-${spaceId}`);
@@ -297,9 +386,9 @@ window.buildBuilding = (spaceId, type, price, isDouble) => {
     
     bContainer.appendChild(marker);
     updateScoreBoard();
-    alert(`성공적으로 건설했습니다!`);
     
-    endTurn(isDouble);
+    // 지은 후에도 다른 건물을 지을 수 있도록 다시 호출
+    handleLandEvent(player, isDouble);
   } else {
     alert("자금이 부족하여 건설할 수 없습니다.");
   }
@@ -310,21 +399,75 @@ window.payToll = (ownerId, toll, isDouble) => {
   const player = window.players[window.currentPlayerIndex];
   const owner = window.players[ownerId];
   
-  player.money -= toll;
-  owner.money += toll;
+  if (window.gameMode !== 'normal') {
+    player.money -= toll;
+    owner.money += toll;
+  }
   
   updateScoreBoard();
-  alert(`${owner.name}님에게 통행료 ${toll}만원을 지불했습니다.`);
-  endTurn(isDouble);
+  
+  if (window.gameMode === 'normal') {
+    alert(`${owner.name}님의 소유지입니다. 통행료 ${toll}만원을 오프라인으로 지불해 주세요.`);
+  } else {
+    alert(`${owner.name}님에게 통행료 ${toll}만원을 지불했습니다.`);
+  }
+  prepareNextTurn(isDouble);
 };
 
-// --- 11. 턴 종료 ---
+// --- 11. 턴 대기 상태 (임의 이동 가능) ---
+window.prepareNextTurn = (isDouble) => {
+  window.isWaitingNextTurn = true;
+  window.currentIsDouble = isDouble;
+  
+  const titleEl = document.getElementById('action-title');
+  const descEl = document.getElementById('action-desc');
+  const btnEl = document.getElementById('action-buttons');
+  
+  titleEl.innerText = "행동 완료 (턴 대기 중)";
+  descEl.innerText = "다음 턴으로 넘어가거나, 보드판의 칸을 클릭해 이동할 수 있습니다.";
+  btnEl.innerHTML = `<button class="start-btn" onclick="endTurn(${isDouble})">다음 사람으로 진행</button>`;
+};
+
+// --- 12. 롤백 기능 및 턴 종료 ---
+window.saveState = () => {
+  window.historyStack.push({
+    boardData: JSON.parse(JSON.stringify(window.boardData)),
+    players: JSON.parse(JSON.stringify(window.players)),
+    currentPlayerIndex: window.currentPlayerIndex
+  });
+};
+
+window.rollbackTurn = () => {
+  if (window.historyStack.length <= 1) { 
+    alert("더 이상 뒤로 갈 수 없습니다.");
+    return;
+  }
+  window.historyStack.pop(); 
+  const prevState = window.historyStack[window.historyStack.length - 1]; 
+  
+  window.boardData = JSON.parse(JSON.stringify(prevState.boardData));
+  window.players = JSON.parse(JSON.stringify(prevState.players));
+  window.currentPlayerIndex = prevState.currentPlayerIndex;
+  
+  document.getElementById('action-screen').style.display = 'none';
+  document.getElementById('dice-screen').style.display = 'block';
+  
+  renderBoard(window.boardData);
+  drawTokens();
+  updateScoreBoard();
+  updateTurnUI();
+};
+
 window.endTurn = (isDouble) => {
+  window.isWaitingNextTurn = false;
+  
   if (!isDouble) {
     window.currentPlayerIndex = (window.currentPlayerIndex + 1) % 4;
   } else {
     alert("더블! 한 번 더 굴립니다.");
   }
+  
+  saveState(); // 다음 사람의 턴 시작 상태 저장
   
   document.getElementById('action-screen').style.display = 'none';
   document.getElementById('dice-screen').style.display = 'block';

@@ -17,10 +17,31 @@
         <p style="margin-bottom: 20px;">플레이어를 확인하고 게임을 시작하세요.</p>
         
         <div id="player-setup">
-          <input type="text" value="아빠" id="p1">
-          <input type="text" value="엄마" id="p2">
-          <input type="text" value="시현" id="p3">
-          <input type="text" value="강윤" id="p4">
+          <div class="draggable-item" draggable="true">
+            <span class="drag-handle">⠿</span>
+            <input type="text" value="아빠" class="player-input">
+          </div>
+          <div class="draggable-item" draggable="true">
+            <span class="drag-handle">⠿</span>
+            <input type="text" value="엄마" class="player-input">
+          </div>
+          <div class="draggable-item" draggable="true">
+            <span class="drag-handle">⠿</span>
+            <input type="text" value="시현" class="player-input">
+          </div>
+          <div class="draggable-item" draggable="true">
+            <span class="drag-handle">⠿</span>
+            <input type="text" value="강현" class="player-input">
+          </div>
+        </div>
+
+        <div style="margin: 15px 0; font-size: 0.9rem;">
+          <label style="margin-right: 15px; cursor: pointer;">
+            <input type="radio" name="gameMode" value="normal" checked> 일반 모드<br><span style="font-size: 0.8rem; color: #666;">(오프라인 지폐 사용, 돈 표시 안함)</span>
+          </label>
+          <label style="cursor: pointer;">
+            <input type="radio" name="gameMode" value="auto"> 자동 모드<br><span style="font-size: 0.8rem; color: #666;">(앱에서 돈 계산 및 표시)</span>
+          </label>
         </div>
         
         <button class="start-btn" onclick="startGame()">게임 시작</button>
@@ -36,7 +57,11 @@
 
       <!-- 3. 주사위 입력 화면 -->
       <div id="dice-screen" style="display: none; text-align: center; width: 100%;">
-        <h2 id="turn-indicator" style="margin-bottom: 20px; color: #333;">누구의 턴?</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <button onclick="rollbackTurn()" style="padding: 5px 10px; font-size: 0.9rem; cursor: pointer; background: #fff; border: 1px solid #ccc; border-radius: 5px;">⬅️ 되돌리기</button>
+          <h2 id="turn-indicator" style="margin: 0; color: #333;">누구의 턴?</h2>
+          <button onclick="forwardTurn()" style="padding: 5px 10px; font-size: 0.9rem; cursor: pointer; background: #fff; border: 1px solid #ccc; border-radius: 5px;">앞으로 ➡️</button>
+        </div>
         
         <p style="margin-bottom: 10px;">주사위 1</p>
         <div class="dice-row" id="dice1-row">

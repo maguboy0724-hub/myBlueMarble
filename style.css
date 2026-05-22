@@ -36,6 +36,7 @@ body {
   font-size: 0.9rem;
   font-weight: bold;
   position: relative;
+  cursor: pointer;
 }
 
 /* 출발, 무인도 등 모서리 4칸 강조 */
@@ -172,4 +173,39 @@ body {
 .building-marker {
   font-size: 14px; /* 이모지 크기 */
   line-height: 1;
+}
+
+/* 드래그 앤 드롭 스타일 */
+.draggable-item {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: grab;
+}
+
+.draggable-item.dragging {
+  opacity: 0.5;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.drag-handle {
+  font-size: 1.5rem;
+  color: #999;
+  margin-right: 10px;
+  cursor: grab;
+}
+
+.player-input {
+  flex-grow: 1;
+  border: none !important;
+  outline: none;
+}
+
+/* 땅 구매 시 텍스트 흰색 처리 */
+.owned-text, .owned-text .name, .owned-text .price {
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
