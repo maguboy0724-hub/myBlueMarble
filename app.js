@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  // 👇 반드시 회원님의 키값으로 바꿔주세요 👇
+  // 👇 회원님의 키값 유지 👇
   apiKey: "AIzaSyDDXX1GEJ5br5jUAR6ksuc7njSYLlrDXHA",
   authDomain: "mybluemarble-96403.firebaseapp.com",
   projectId: "mybluemarble-96403",
@@ -34,10 +34,7 @@ async function fetchBoardData() {
     const dataArray = [];
     querySnapshot.forEach((doc) => dataArray.push(doc.data()));
     
-    if (dataArray.length === 0) {
-      alert("데이터가 없습니다!");
-      return;
-    }
+    if (dataArray.length === 0) return;
     
     window.boardData = dataArray.sort((a, b) => a.id - b.id);
     renderBoard(window.boardData);
@@ -194,7 +191,8 @@ function updateScoreBoard() {
 
 // --- 7. 도착 이벤트 (건물 및 통행료 갱신) ---
 window.handleLandEvent = (player, isDouble) => {
-  const currentSpace = window.boardData[player.position];
+  const spaceIndex = player.position; 
+  const currentSpace = window.boardData[spaceIndex];
   
   document.getElementById('dice-screen').style.display = 'none';
   document.getElementById('action-screen').style.display = 'block';
@@ -211,16 +209,15 @@ window.handleLandEvent = (player, isDouble) => {
       // 빈 땅
       descEl.innerText = `주인이 없는 곳입니다.\n땅 구매가: ${currentSpace.price_land}만원`;
       btnEl.innerHTML = `
-        <button class="start-btn" style="background-color: #4CAF50;" onclick="buyLand(${currentSpace.id}, ${currentSpace.price_land}, ${isDouble})">구매하기</button>
+        <button class="start-btn" style="background-color: #4CAF50;" onclick="buyLand(${spaceIndex}, ${currentSpace.price_land}, ${isDouble})">구매하기</button>
         <button class="start-btn" style="background-color: #9e9e9e;" onclick="endTurn(${isDouble})">건너뛰기</button>
       `;
     } else if (currentSpace.owner !== player.id) {
-      // 🌟 남의 땅 (건물에 따른 통행료 합산)
+      // 남의 땅
       const owner = window.players[currentSpace.owner];
       let totalToll = currentSpace.toll_land || 5; 
       const b = currentSpace.buildings || {};
       
-      // 건물이 지어져 있다면 DB의 통행료를 더함 (없으면 기본값 사용)
       if (b.villa) totalToll += (currentSpace.toll_villa || 5);
       if (b.building) totalToll += (currentSpace.toll_building || 15);
       if (b.hotel) totalToll += (currentSpace.toll_hotel || 30);
@@ -228,18 +225,17 @@ window.handleLandEvent = (player, isDouble) => {
       descEl.innerText = `앗! ${owner.name}의 소유지입니다.\n통행료 ${totalToll}만원을 지불해야 합니다.`;
       btnEl.innerHTML = `<button class="start-btn" onclick="payToll(${currentSpace.owner}, ${totalToll}, ${isDouble})">지불하기</button>`;
     } else {
-      // 🌟 내 땅 (건물 짓기 UI 표시)
+      // 내 땅 (건물 짓기)
       const b = currentSpace.buildings || {};
       let buildHTML = '';
       
-      // DB에 건물 가격이 없으면 기본값으로 별장 10만, 빌딩 20만, 호텔 30만 책정
       const pVilla = currentSpace.price_villa || 10;
       const pBldg = currentSpace.price_building || 20;
       const pHotel = currentSpace.price_hotel || 30;
 
-      if (!b.villa) buildHTML += `<button class="build-btn" onclick="buildBuilding(${currentSpace.id}, 'villa', ${pVilla}, ${isDouble})">⛺별장(${pVilla}만)</button>`;
-      if (!b.building) buildHTML += `<button class="build-btn" onclick="buildBuilding(${currentSpace.id}, 'building', ${pBldg}, ${isDouble})">🏢빌딩(${pBldg}만)</button>`;
-      if (!b.hotel) buildHTML += `<button class="build-btn" onclick="buildBuilding(${currentSpace.id}, 'hotel', ${pHotel}, ${isDouble})">🏨호텔(${pHotel}만)</button>`;
+      if (!b.villa) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'villa', ${pVilla}, ${isDouble})">⛺별장(${pVilla}만)</button>`;
+      if (!b.building) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'building', ${pBldg}, ${isDouble})">🏢빌딩(${pBldg}만)</button>`;
+      if (!b.hotel) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'hotel', ${pHotel}, ${isDouble})">🏨호텔(${pHotel}만)</button>`;
 
       if (buildHTML === '') {
         descEl.innerText = "더 이상 지을 건물이 없습니다. 편히 쉬세요!";
@@ -262,7 +258,7 @@ window.buyLand = (spaceId, price, isDouble) => {
   if (player.money >= price) {
     player.money -= price; 
     window.boardData[spaceId].owner = player.id; 
-    window.boardData[spaceId].buildings = { villa: false, building: false, hotel: false }; // 🌟 건물 상태 객체 초기화
+    window.boardData[spaceId].buildings = { villa: false, building: false, hotel: false };
     
     const spaceEl = document.getElementById(`space-${spaceId}`);
     spaceEl.style.borderBottom = `5px solid ${player.color}`;
@@ -276,16 +272,15 @@ window.buyLand = (spaceId, price, isDouble) => {
   }
 };
 
-// --- 9. 🌟 건물 짓기 함수 (새로 추가) ---
+// --- 9. 건물 짓기 ---
 window.buildBuilding = (spaceId, type, price, isDouble) => {
   const player = window.players[window.currentPlayerIndex];
   const space = window.boardData[spaceId];
 
   if (player.money >= price) {
     player.money -= price;
-    space.buildings[type] = true; // 건물 지어짐 기록
+    space.buildings[type] = true;
     
-    // UI에 건물 마커(이모지) 그리기
     const spaceEl = document.getElementById(`space-${spaceId}`);
     let bContainer = spaceEl.querySelector('.building-container');
     if (!bContainer) {
@@ -304,13 +299,13 @@ window.buildBuilding = (spaceId, type, price, isDouble) => {
     updateScoreBoard();
     alert(`성공적으로 건설했습니다!`);
     
-    // 지은 후 다음 사람에게 턴 넘기기
     endTurn(isDouble);
   } else {
     alert("자금이 부족하여 건설할 수 없습니다.");
   }
 };
 
+// --- 10. 통행료 지불 ---
 window.payToll = (ownerId, toll, isDouble) => {
   const player = window.players[window.currentPlayerIndex];
   const owner = window.players[ownerId];
@@ -323,6 +318,7 @@ window.payToll = (ownerId, toll, isDouble) => {
   endTurn(isDouble);
 };
 
+// --- 11. 턴 종료 ---
 window.endTurn = (isDouble) => {
   if (!isDouble) {
     window.currentPlayerIndex = (window.currentPlayerIndex + 1) % 4;
