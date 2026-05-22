@@ -1,0 +1,175 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f0f0;
+  font-family: 'Malgun Gothic', sans-serif;
+}
+
+/* 11x11 보드판 전체 컨테이너 */
+.board-container {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  grid-template-rows: repeat(11, 1fr);
+  width: 95vmin;  /* 화면 크기에 맞춰 항상 정사각형 유지 */
+  height: 95vmin;
+  gap: 2px;       /* 이 간격 사이로 배경색이 보여서 선이 됩니다 */
+  background-color: #222; 
+  border: 4px solid #222;
+}
+
+/* 40개의 개별 보드 칸 */
+.space {
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: bold;
+  position: relative;
+}
+
+/* 출발, 무인도 등 모서리 4칸 강조 */
+.space.corner {
+  background-color: #e3f2fd;
+  font-size: 1.1rem;
+}
+
+/* 정중앙 컨트롤 패널 (9x9) */
+.center-panel {
+  grid-column: 2 / 11; /* 2열부터 10열까지 병합 */
+  grid-row: 2 / 11;    /* 2행부터 10행까지 병합 */
+  background-color: #cde6d5; /* 부루마블 특유의 연녹색 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+/* 중앙 패널 내부 폼 스타일 */
+#player-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+  width: 50%;
+}
+
+#player-setup input {
+  padding: 10px;
+  font-size: 1.2rem;
+  text-align: center;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+}
+
+.start-btn {
+  padding: 15px 30px;
+  font-size: 1.5rem;
+  background-color: #ff5252;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* 주사위 버튼 스타일 */
+.dice-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dice-row button {
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  background-color: white;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dice-row button.selected {
+  background-color: #ff5252;
+  color: white;
+  border-color: #ff5252;
+}
+
+#setup-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* 플레이어 말(토큰) 스타일 */
+.token-container {
+  position: absolute;
+  bottom: 5px;
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  width: 100%;
+}
+
+.token {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.5);
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+  z-index: 5;
+}
+
+.token.bouncing {
+  animation: bounce 0.5s ease-in-out;
+}
+
+@keyframes bounce {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-20px) scale(1.2); }
+  100% { transform: translateY(0); }
+}
+
+/* 건물 건설 버튼 스타일 */
+.build-btn {
+  padding: 8px 12px;
+  margin: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: white;
+  transition: all 0.2s;
+}
+.build-btn:hover {
+  background-color: #f0f0f0;
+}
+
+/* 보드판 위 건물 이모지 마커 */
+.building-container {
+  position: absolute;
+  top: 2px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  gap: 2px;
+}
+.building-marker {
+  font-size: 14px; /* 이모지 크기 */
+  line-height: 1;
+}

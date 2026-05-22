@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>우리 가족 부루마블</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="board-container" id="board">
+    
+    <!-- 중앙 패널: 게임 진행 UI 및 주사위 화면 -->
+    <div class="center-panel" id="center-panel">
+      
+      <!-- 1. 플레이어 설정 화면 (최초 화면) -->
+      <div id="setup-screen">
+        <h1 style="text-align:center; margin-bottom: 10px;">부루마블</h1>
+        <p style="margin-bottom: 20px;">플레이어를 확인하고 게임을 시작하세요.</p>
+        
+        <div id="player-setup">
+          <input type="text" value="아빠" id="p1">
+          <input type="text" value="엄마" id="p2">
+          <input type="text" value="시현" id="p3">
+          <input type="text" value="강윤" id="p4">
+        </div>
+        
+        <button class="start-btn" onclick="startGame()">게임 시작</button>
+      </div>
+
+      <!-- 2. 점수판 (게임 시작 시 등장) -->
+      <div id="scoreboard" style="display: none; width: 90%; justify-content: space-between; margin-bottom: 10px; font-weight: bold; font-size: 0.9rem;">
+        <span id="score-0">아빠: 500만</span>
+        <span id="score-1">엄마: 500만</span>
+        <span id="score-2">시현: 500만</span>
+        <span id="score-3">강윤: 500만</span>
+      </div>
+
+      <!-- 3. 주사위 입력 화면 -->
+      <div id="dice-screen" style="display: none; text-align: center; width: 100%;">
+        <h2 id="turn-indicator" style="margin-bottom: 20px; color: #333;">누구의 턴?</h2>
+        
+        <p style="margin-bottom: 10px;">주사위 1</p>
+        <div class="dice-row" id="dice1-row">
+          <button onclick="selectDice(1, 1)">1</button>
+          <button onclick="selectDice(1, 2)">2</button>
+          <button onclick="selectDice(1, 3)">3</button>
+          <button onclick="selectDice(1, 4)">4</button>
+          <button onclick="selectDice(1, 5)">5</button>
+          <button onclick="selectDice(1, 6)">6</button>
+        </div>
+
+        <p style="margin-top: 15px; margin-bottom: 10px;">주사위 2</p>
+        <div class="dice-row" id="dice2-row">
+          <button onclick="selectDice(2, 1)">1</button>
+          <button onclick="selectDice(2, 2)">2</button>
+          <button onclick="selectDice(2, 3)">3</button>
+          <button onclick="selectDice(2, 4)">4</button>
+          <button onclick="selectDice(2, 5)">5</button>
+          <button onclick="selectDice(2, 6)">6</button>
+        </div>
+
+        <button id="move-btn" style="display:none; margin-top: 20px;" class="start-btn" onclick="movePlayer()">이동하기!</button>
+      </div>
+
+      <!-- 4. 땅 도착 액션 화면 (말 이동 완료 시 등장) -->
+      <div id="action-screen" style="display: none; text-align: center; width: 100%;">
+        <h2 id="action-title" style="color: #333; margin-bottom: 10px;">도착한 땅 이름</h2>
+        <p id="action-desc" style="font-size: 1.2rem; margin-bottom: 20px;">주인이 없는 땅입니다.</p>
+        <div id="action-buttons">
+          <!-- JS에서 동적으로 버튼을 넣어줍니다 -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
