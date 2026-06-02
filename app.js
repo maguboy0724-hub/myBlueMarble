@@ -28,6 +28,8 @@ window.isWaitingNextTurn = false;
 window.currentIsDouble = false;
 window.gameMode = 'normal';
 window.historyStack = [];
+window.socialFund = 0; // 사회복지기금 누적 금액
+window.waitingForSpaceClick = false; // 우주여행 시 목적지 클릭 대기 상태
 
 // --- 드래그 앤 드롭 로직 ---
 const playerSetup = document.getElementById('player-setup');
@@ -79,6 +81,35 @@ function getDragAfterElement(container, y) {
     }
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
+
+// --- 터치(태블릿/모바일) 드래그 앤 드롭 로직 ---
+let touchDraggedItem = null;
+
+playerSetup.addEventListener('touchstart', (e) => {
+  if (e.target.classList.contains('drag-handle')) {
+    touchDraggedItem = e.target.closest('.draggable-item');
+    setTimeout(() => touchDraggedItem.classList.add('dragging'), 0);
+  }
+}, { passive: false });
+
+playerSetup.addEventListener('touchmove', (e) => {
+  if (!touchDraggedItem) return;
+  e.preventDefault(); // 스크롤 방지
+  const touch = e.touches[0];
+  const afterElement = getDragAfterElement(playerSetup, touch.clientY);
+  if (afterElement == null) {
+    playerSetup.appendChild(touchDraggedItem);
+  } else {
+    playerSetup.insertBefore(touchDraggedItem, afterElement);
+  }
+}, { passive: false });
+
+playerSetup.addEventListener('touchend', () => {
+  if (touchDraggedItem) {
+    touchDraggedItem.classList.remove('dragging');
+    touchDraggedItem = null;
+  }
+});
 
 const board = document.getElementById('board');
 
@@ -135,6 +166,20 @@ function renderBoard(data) {
     }
     
     space.onclick = () => {
+      const currentPlayer = window.players[window.currentPlayerIndex];
+      // 우주여행 이동 처리
+      if (window.waitingForSpaceClick && currentPlayer.isSpaceTravel) {
+        currentPlayer.position = i;
+        currentPlayer.isSpaceTravel = false;
+        window.waitingForSpaceClick = false;
+        drawTokens();
+        
+        if (i === 0 && window.gameMode !== 'normal') currentPlayer.money += 20; // 출발지 도착 시 월급
+        updateScoreBoard();
+        handleLandEvent(currentPlayer, false);
+        return;
+      }
+
       if (window.isWaitingNextTurn) {
         const currentPlayer = window.players[window.currentPlayerIndex];
         currentPlayer.position = i;
@@ -166,7 +211,8 @@ function drawTokens() {
       playersHere.forEach(p => {
         const token = document.createElement('div');
         token.className = 'token';
-        token.style.backgroundColor = p.color;
+        token.style.borderColor = p.color;
+        token.innerText = p.char;
         
         if (window.isMoving && window.movingPlayerId === p.id) {
           token.classList.add('bouncing');
@@ -191,12 +237,14 @@ window.startGame = () => {
   }
 
   const inputs = document.querySelectorAll('.player-input');
+  const chars = document.querySelectorAll('.player-char');
   const colors = ["#FF5252", "#448AFF", "#FFC107", "#4CAF50"];
+  window.socialFund = 0;
   window.players = [
-    { id: 0, name: inputs[0].value, position: 0, color: colors[0], money: 500 },
-    { id: 1, name: inputs[1].value, position: 0, color: colors[1], money: 500 },
-    { id: 2, name: inputs[2].value, position: 0, color: colors[2], money: 500 },
-    { id: 3, name: inputs[3].value, position: 0, color: colors[3], money: 500 }
+    { id: 0, name: inputs[0].value, char: chars[0].value, position: 0, color: colors[0], money: 290, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 },
+    { id: 1, name: inputs[1].value, char: chars[1].value, position: 0, color: colors[1], money: 290, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 },
+    { id: 2, name: inputs[2].value, char: chars[2].value, position: 0, color: colors[2], money: 290, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 },
+    { id: 3, name: inputs[3].value, char: chars[3].value, position: 0, color: colors[3], money: 290, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 }
   ];
 
   document.getElementById('setup-screen').style.display = 'none';
@@ -211,13 +259,61 @@ window.startGame = () => {
 
 function updateTurnUI() {
   const currentPlayer = window.players[window.currentPlayerIndex];
-  document.getElementById('turn-indicator').innerText = `🎲 ${currentPlayer.name}의 턴!`;
+  
+  if (currentPlayer.bankrupt) {
+    window.currentPlayerIndex = (window.currentPlayerIndex + 1) % 4; // 파산한 플레이어 건너뛰기
+    updateTurnUI();
+    return;
+  }
+
+  document.getElementById('turn-indicator').innerText = `🎲 ${currentPlayer.char} ${currentPlayer.name}의 턴!`;
   document.getElementById('turn-indicator').style.color = currentPlayer.color;
   
   selectedDice1 = null;
   selectedDice2 = null;
   document.getElementById('move-btn').style.display = 'none';
   document.querySelectorAll('.dice-row button').forEach(btn => btn.classList.remove('selected'));
+
+  // 우주여행 상태 처리
+  if (currentPlayer.isSpaceTravel) {
+    document.getElementById('turn-indicator').innerText = `🚀 ${currentPlayer.char} ${currentPlayer.name} 우주여행! 이동할 칸을 클릭하세요.`;
+    document.getElementById('dice1-row').style.display = 'none';
+    document.getElementById('dice2-row').style.display = 'none';
+    window.waitingForSpaceClick = true;
+    return;
+  } else {
+    document.getElementById('dice1-row').style.display = 'flex';
+    document.getElementById('dice2-row').style.display = 'flex';
+    window.waitingForSpaceClick = false;
+  }
+
+  // 무인도 탈출 버튼 처리
+  let escapeBtn = document.getElementById('escape-island-btn');
+  if (currentPlayer.islandTurns > 0) {
+    document.getElementById('turn-indicator').innerText += ` (무인도 고립 ${currentPlayer.islandTurns}턴 남음)`;
+    if (!escapeBtn) {
+      escapeBtn = document.createElement('button');
+      escapeBtn.id = 'escape-island-btn';
+      escapeBtn.className = 'start-btn';
+      escapeBtn.style.marginTop = '10px';
+      escapeBtn.innerText = '💸 20만 지불하고 탈출';
+      document.getElementById('dice-screen').appendChild(escapeBtn);
+    }
+    escapeBtn.style.display = 'inline-block';
+    escapeBtn.onclick = () => {
+      if (currentPlayer.money >= 20 || window.gameMode === 'normal') {
+        if (window.gameMode !== 'normal') currentPlayer.money -= 20;
+        currentPlayer.islandTurns = 0;
+        alert("20만원을 지불하고 무인도에서 즉시 탈출했습니다!");
+        updateScoreBoard();
+        updateTurnUI();
+      } else {
+        alert("돈이 부족하여 탈출할 수 없습니다!");
+      }
+    };
+  } else {
+    if (escapeBtn) escapeBtn.style.display = 'none';
+  }
 }
 
 window.selectDice = (diceNumber, value) => {
@@ -241,14 +337,34 @@ window.movePlayer = () => {
 
   document.getElementById('move-btn').style.display = 'none';
   
+  // 무인도 로직
+  if (currentPlayer.islandTurns > 0) {
+    if (isDouble) {
+      alert("더블! 무인도에서 기적적으로 탈출합니다.");
+      currentPlayer.islandTurns = 0;
+    } else {
+      currentPlayer.islandTurns--;
+      alert(`주사위 합 ${total}. 탈출 실패. (남은 고립 턴: ${currentPlayer.islandTurns})`);
+      endTurn(false);
+      return;
+    }
+  }
+
   let movesLeft = total;
   window.isMoving = true;
   window.movingPlayerId = currentPlayer.id;
 
   const moveInterval = setInterval(() => {
     currentPlayer.position = (currentPlayer.position + 1) % 40;
+    
+    // 출발지 통과 시 20만원 월급
+    if (currentPlayer.position === 0 && window.gameMode !== 'normal') {
+      currentPlayer.money += 20;
+      updateScoreBoard();
+    }
+
     movesLeft--;
-    document.getElementById('turn-indicator').innerText = `🏃‍♂️ ${currentPlayer.name} 이동 중... (남은 칸: ${movesLeft})`;
+    document.getElementById('turn-indicator').innerText = `🏃‍♂️ ${currentPlayer.char} ${currentPlayer.name} 이동 중... (남은 칸: ${movesLeft})`;
     drawTokens(); 
 
     if (movesLeft === 0) {
@@ -266,12 +382,18 @@ function updateScoreBoard() {
   window.players.forEach(p => {
     const scoreEl = document.getElementById(`score-${p.id}`);
     if (scoreEl) {
-      if (window.gameMode === 'normal') {
-        scoreEl.innerText = `${p.name}`;
+      const exemptionText = p.exemptionCards > 0 ? ` [🎫${p.exemptionCards}]` : '';
+      if (p.bankrupt) {
+        scoreEl.innerText = `${p.char} ${p.name}: 파산💀`;
+        scoreEl.style.textDecoration = "line-through";
+        scoreEl.style.color = "#999";
+      } else if (window.gameMode === 'normal') {
+        scoreEl.innerText = `${p.char} ${p.name}${exemptionText}`;
+        scoreEl.style.color = p.color;
       } else {
-        scoreEl.innerText = `${p.name}: ${p.money}만`;
+        scoreEl.innerText = `${p.char} ${p.name}: ${Number(p.money.toFixed(2))}만${exemptionText}`;
+        scoreEl.style.color = p.color;
       }
-      scoreEl.style.color = p.color;
     }
   });
 }
@@ -291,7 +413,7 @@ window.handleLandEvent = (player, isDouble) => {
   titleEl.innerText = currentSpace.name;
   btnEl.innerHTML = ''; 
 
-  if (currentSpace.type === 'city' || currentSpace.type === 'resort') {
+  if (currentSpace.type === 'city' || currentSpace.type === 'resort' || currentSpace.type === 'vehicle') {
     if (currentSpace.owner === undefined) {
       // 빈 땅
       descEl.innerText = `주인이 없는 곳입니다.\n땅 구매가: ${currentSpace.price_land}만원`;
@@ -309,29 +431,63 @@ window.handleLandEvent = (player, isDouble) => {
       if (b.building) totalToll += (currentSpace.toll_building || 15);
       if (b.hotel) totalToll += (currentSpace.toll_hotel || 30);
 
+      totalToll = Number(totalToll.toFixed(2)); // 부동소수점 계산 오차 방지
+
       descEl.innerText = `앗! ${owner.name}의 소유지입니다.\n통행료 ${totalToll}만원을 지불해야 합니다.`;
-      btnEl.innerHTML = `<button class="start-btn" onclick="payToll(${currentSpace.owner}, ${totalToll}, ${isDouble})">지불하기</button>`;
+      let tollBtns = `<button class="start-btn" onclick="payToll(${currentSpace.owner}, ${totalToll}, ${isDouble})">지불하기</button>`;
+      if (player.exemptionCards > 0) {
+        tollBtns += ` <button class="start-btn" style="background-color: gold; color: black; margin-left: 5px;" onclick="useExemptionCard(${isDouble})">🎫우대권 사용</button>`;
+      }
+      btnEl.innerHTML = tollBtns;
     } else {
-      // 내 땅 (건물 짓기)
-      const b = currentSpace.buildings || {};
-      let buildHTML = '';
-      
-      const pVilla = currentSpace.price_villa || 10;
-      const pBldg = currentSpace.price_building || 20;
-      const pHotel = currentSpace.price_hotel || 30;
-
-      if (!b.villa) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'villa', ${pVilla}, ${isDouble})">⛺별장(${pVilla}만)</button>`;
-      if (!b.building) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'building', ${pBldg}, ${isDouble})">🏢빌딩(${pBldg}만)</button>`;
-      if (!b.hotel) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'hotel', ${pHotel}, ${isDouble})">🏨호텔(${pHotel}만)</button>`;
-
-      if (buildHTML === '') {
-        descEl.innerText = "더 이상 지을 건물이 없습니다. 편히 쉬세요!";
-        btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
+      if (currentSpace.type === 'city') {
+        // 내 땅 (건물 짓기)
+        const b = currentSpace.buildings || {};
+        let buildHTML = '';
+        
+        const pVilla = currentSpace.price_villa || 10;
+        const pBldg = currentSpace.price_building || 20;
+        const pHotel = currentSpace.price_hotel || 30;
+  
+        if (!b.villa) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'villa', ${pVilla}, ${isDouble})">⛺별장(${pVilla}만)</button>`;
+        if (!b.building) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'building', ${pBldg}, ${isDouble})">🏢빌딩(${pBldg}만)</button>`;
+        if (!b.hotel) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'hotel', ${pHotel}, ${isDouble})">🏨호텔(${pHotel}만)</button>`;
+  
+        if (buildHTML === '') {
+          descEl.innerText = "더 이상 지을 건물이 없습니다. 편히 쉬세요!";
+          btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
+        } else {
+          descEl.innerText = "내 영지입니다! 건물을 추가하시겠습니까?";
+          btnEl.innerHTML = buildHTML + `<br><br><button class="start-btn" style="background-color: #9e9e9e;" onclick="prepareNextTurn(${isDouble})">건설 안 함</button>`;
+        }
       } else {
-        descEl.innerText = "내 영지입니다! 건물을 추가하시겠습니까?";
-        btnEl.innerHTML = buildHTML + `<br><br><button class="start-btn" style="background-color: #9e9e9e;" onclick="prepareNextTurn(${isDouble})">건설 안 함</button>`;
+        descEl.innerText = "특수 시설(휴양지/여객기)입니다. 건물은 지을 수 없습니다.";
+        btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
       }
     }
+  } else if (currentSpace.type === 'start') {
+    descEl.innerText = "출발지입니다. (지나갈 때마다 20만원 획득)";
+    btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
+  } else if (currentSpace.type === 'island') {
+    if (player.islandTurns === 0) {
+      player.islandTurns = 3;
+      descEl.innerText = "무인도에 갇혔습니다!\n3턴 동안 이동할 수 없으며, 주사위 더블이 나오거나 20만원을 내야 탈출할 수 있습니다.";
+    } else {
+      descEl.innerText = "무인도에서 휴식 중입니다.";
+    }
+    btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
+  } else if (currentSpace.type === 'space_travel') {
+    descEl.innerText = "콜롬비아호(우주여행)에 도착했습니다!\n20만원을 지불하고 다음 턴에 원하는 곳으로 날아갑니다.";
+    btnEl.innerHTML = `<button class="start-btn" onclick="paySpaceTravel(${isDouble})">20만 지불 및 탑승</button>`;
+  } else if (currentSpace.type === 'fund_pay') {
+    descEl.innerText = "사회복지기금 접수처입니다.\n15만원을 기금으로 납부해야 합니다.";
+    btnEl.innerHTML = `<button class="start-btn" onclick="paySocialFund(${isDouble})">15만 납부</button>`;
+  } else if (currentSpace.type === 'fund_receive') {
+    descEl.innerText = `사회복지기금 수령처입니다!\n현재 쌓인 기금: ${window.socialFund}만원`;
+    btnEl.innerHTML = `<button class="start-btn" onclick="receiveSocialFund(${isDouble})">기금 수령</button>`;
+  } else if (currentSpace.type === 'chance') {
+    descEl.innerText = "황금열쇠 카드를 뽑습니다!";
+    btnEl.innerHTML = `<button class="start-btn" onclick="drawGoldenKey(${isDouble})">카드 뽑기</button>`;
   } else {
     descEl.innerText = currentSpace.description || "특수 칸입니다.";
     btnEl.innerHTML = `<button class="start-btn" onclick="prepareNextTurn(${isDouble})">확인</button>`;
@@ -343,7 +499,7 @@ window.buyLand = (spaceId, price, isDouble) => {
   const player = window.players[window.currentPlayerIndex];
   
   if (window.gameMode === 'normal' || player.money >= price) {
-    if (window.gameMode !== 'normal') player.money -= price; 
+    if (window.gameMode !== 'normal') player.money = Number((player.money - price).toFixed(2)); 
     window.boardData[spaceId].owner = player.id; 
     window.boardData[spaceId].buildings = { villa: false, building: false, hotel: false };
     
@@ -367,7 +523,7 @@ window.buildBuilding = (spaceId, type, price, isDouble) => {
   const space = window.boardData[spaceId];
 
   if (window.gameMode === 'normal' || player.money >= price) {
-    if (window.gameMode !== 'normal') player.money -= price;
+    if (window.gameMode !== 'normal') player.money = Number((player.money - price).toFixed(2));
     space.buildings[type] = true;
     
     const spaceEl = document.getElementById(`space-${spaceId}`);
@@ -400,11 +556,12 @@ window.payToll = (ownerId, toll, isDouble) => {
   const owner = window.players[ownerId];
   
   if (window.gameMode !== 'normal') {
-    player.money -= toll;
-    owner.money += toll;
+    player.money = Number((player.money - toll).toFixed(2));
+    owner.money = Number((owner.money + toll).toFixed(2));
   }
   
   updateScoreBoard();
+  checkBankruptcy(player);
   
   if (window.gameMode === 'normal') {
     alert(`${owner.name}님의 소유지입니다. 통행료 ${toll}만원을 오프라인으로 지불해 주세요.`);
@@ -426,6 +583,120 @@ window.prepareNextTurn = (isDouble) => {
   titleEl.innerText = "행동 완료 (턴 대기 중)";
   descEl.innerText = "다음 턴으로 넘어가거나, 보드판의 칸을 클릭해 이동할 수 있습니다.";
   btnEl.innerHTML = `<button class="start-btn" onclick="endTurn(${isDouble})">다음 사람으로 진행</button>`;
+};
+
+// --- 11-1. 특수칸 및 황금열쇠 이벤트 함수 ---
+window.paySpaceTravel = (isDouble) => {
+  const player = window.players[window.currentPlayerIndex];
+  if (window.gameMode !== 'normal') player.money = Number((player.money - 20).toFixed(2));
+  player.isSpaceTravel = true;
+  updateScoreBoard();
+  checkBankruptcy(player);
+  prepareNextTurn(isDouble);
+};
+
+window.paySocialFund = (isDouble) => {
+  const player = window.players[window.currentPlayerIndex];
+  if (window.gameMode !== 'normal') player.money = Number((player.money - 15).toFixed(2));
+  window.socialFund += 15;
+  updateScoreBoard();
+  checkBankruptcy(player);
+  prepareNextTurn(isDouble);
+};
+
+window.receiveSocialFund = (isDouble) => {
+  const player = window.players[window.currentPlayerIndex];
+  if (window.gameMode !== 'normal') player.money = Number((player.money + window.socialFund).toFixed(2));
+  alert(`사회복지기금 ${window.socialFund}만원을 획득했습니다!`);
+  window.socialFund = 0;
+  updateScoreBoard();
+  prepareNextTurn(isDouble);
+};
+
+// --- 우대권 사용 ---
+window.useExemptionCard = (isDouble) => {
+  const player = window.players[window.currentPlayerIndex];
+  if(player.exemptionCards > 0) {
+    player.exemptionCards--;
+    alert("🎫 우대권을 사용하여 통행료를 면제받았습니다!");
+    updateScoreBoard();
+    prepareNextTurn(isDouble);
+  }
+};
+
+window.drawGoldenKey = (isDouble) => {
+  const player = window.players[window.currentPlayerIndex];
+  // 확률 계산: 30장 중 2장 (0~29 난수 중 0, 1)
+  const rand = Math.floor(Math.random() * 30);
+  
+  if (rand < 2) {
+    alert("[황금열쇠 카드 🎫]\n우대권 당첨! 남의 땅 통행료를 한 번 면제받을 수 있습니다.");
+    player.exemptionCards++;
+    updateScoreBoard();
+    prepareNextTurn(isDouble);
+  } else {
+    const keys = [
+      { text: "병원비 지불: 5만원을 은행에 납부합니다.", effect: (p) => { if(window.gameMode !== 'normal') p.money-=5; } },
+      { text: "복권 당첨!: 10만원을 획득합니다.", effect: (p) => { if(window.gameMode !== 'normal') p.money+=10; } },
+      { text: "과속 벌금: 3만원을 은행에 납부합니다.", effect: (p) => { if(window.gameMode !== 'normal') p.money-=3; } },
+      { text: "출발지로 이동: 출발지로 돌아가며 월급 20만원을 받습니다.", effect: (p) => { p.position = 0; if(window.gameMode !== 'normal') p.money+=20; drawTokens(); } },
+      { text: "뒤로 3칸 이동!", effect: (p) => { p.position = (p.position - 3 + 40) % 40; drawTokens(); setTimeout(()=>handleLandEvent(p, isDouble), 500); return "skip"; } },
+      { text: "건물 수리비 지불: 10만원을 은행에 납부합니다.", effect: (p) => { if(window.gameMode !== 'normal') p.money-=10; } },
+      { text: "유산 상속!: 20만원을 획득합니다.", effect: (p) => { if(window.gameMode !== 'normal') p.money+=20; } },
+      { text: "은행 이자 배당: 5만원을 획득합니다.", effect: (p) => { if(window.gameMode !== 'normal') p.money+=5; } }
+    ];
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    alert(`[황금열쇠 카드]\n${randomKey.text}`);
+    
+    const skipNext = randomKey.effect(player);
+    updateScoreBoard();
+    checkBankruptcy(player);
+  
+    if (skipNext !== "skip") {
+      prepareNextTurn(isDouble);
+    }
+  }
+};
+
+// --- 11-2. 파산 처리 (건물/땅 반값 매각) ---
+window.checkBankruptcy = (player) => {
+  if (window.gameMode !== 'normal' && player.money < 0 && !player.bankrupt) {
+    alert(`${player.name}님의 자금이 부족합니다!\n(부채 청산을 위해 소유한 자산을 반값에 자동 매각합니다.)`);
+    
+    for (let i = 0; i < 40; i++) {
+       const space = window.boardData[i];
+       if (space.owner === player.id) {
+         let value = space.price_land || 0;
+         if (space.buildings?.villa) value += (space.price_villa || 0);
+         if (space.buildings?.building) value += (space.price_building || 0);
+         if (space.buildings?.hotel) value += (space.price_hotel || 0);
+         
+         player.money += (value / 2); // 반값 매각
+         space.owner = undefined;
+         space.buildings = { villa: false, building: false, hotel: false };
+         
+         // UI 초기화
+         const spaceEl = document.getElementById(`space-${i}`);
+         if (spaceEl) {
+           spaceEl.style.borderBottom = 'none';
+           spaceEl.style.backgroundColor = '#fff';
+           spaceEl.classList.remove('owned-text');
+           const bContainer = spaceEl.querySelector('.building-container');
+           if (bContainer) bContainer.remove();
+         }
+         if (player.money >= 0) break; 
+       }
+    }
+
+    if (player.money < 0) {
+      alert(`${player.name}님은 자산을 모두 처분해도 빚을 갚지 못해 파산하셨습니다!`);
+      player.bankrupt = true;
+      player.money = "파산";
+    } else {
+       alert(`자산을 매각하여 빚을 청산했습니다. 남은 돈: ${player.money}만`);
+    }
+    updateScoreBoard();
+  }
 };
 
 // --- 12. 롤백 기능 및 턴 종료 ---
@@ -460,9 +731,18 @@ window.rollbackTurn = () => {
 
 window.endTurn = (isDouble) => {
   window.isWaitingNextTurn = false;
+
+  const alivePlayers = window.players.filter(p => !p.bankrupt);
+  if (alivePlayers.length <= 1) {
+    alert(`게임 종료! 최후의 승자는 ${alivePlayers[0].name}님 입니다! 🎉`);
+    return;
+  }
   
   if (!isDouble) {
-    window.currentPlayerIndex = (window.currentPlayerIndex + 1) % 4;
+    // 파산하지 않은 다음 사람 찾기
+    do {
+      window.currentPlayerIndex = (window.currentPlayerIndex + 1) % 4;
+    } while (window.players[window.currentPlayerIndex].bankrupt);
   } else {
     alert("더블! 한 번 더 굴립니다.");
   }

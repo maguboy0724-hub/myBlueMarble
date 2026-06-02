@@ -37,12 +37,79 @@ body {
   font-weight: bold;
   position: relative;
   cursor: pointer;
+  overflow: hidden; /* 배경 아이콘이 칸을 넘어가지 않도록 설정 */
 }
 
 /* 출발, 무인도 등 모서리 4칸 강조 */
 .space.corner {
   background-color: #e3f2fd;
   font-size: 1.1rem;
+}
+
+/* --- 모든 칸 배경 이미지(이모지 워터마크) --- */
+.space::before {
+  position: absolute;
+  opacity: 0.55; /* 배경처럼 은은하게 보이도록 투명도 조절 */
+  z-index: 0;
+  pointer-events: none; /* 마우스 클릭 방해 방지 */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* 정확히 가운데 정렬 */
+  font-size: 3.5rem; /* 기본 칸 이모지 크기 */
+}
+
+/* 모서리 특수칸은 조금 더 크게 */
+#space-0::before, #space-10::before, #space-20::before, #space-30::before {
+  font-size: 5rem; 
+}
+
+#space-0::before { content: "🚩"; }
+#space-1::before { content: "🧋"; } /* 타이베이 (버블티) */
+#space-2::before { content: "🔑"; }
+#space-3::before { content: "🐼"; } /* 베이징 (팬더) */
+#space-4::before { content: "🥭"; } /* 마닐라 (망고) */
+#space-5::before { content: "🍊"; } /* 제주도 */
+#space-6::before { content: "🦁"; } /* 싱가포르 (사자) */
+#space-7::before { content: "🔑"; }
+#space-8::before { content: "🐪"; } /* 카이로 (낙타) */
+#space-9::before { content: "🕌"; } /* 이스탄불 (사원) */
+#space-10::before { content: "🏝️"; }
+#space-11::before { content: "🏛️"; } /* 아테네 (신전) */
+#space-12::before { content: "🔑"; }
+#space-13::before { content: "🧜‍♀️"; } /* 코펜하겐 (인어공주) */
+#space-14::before { content: "🌲"; } /* 스톡홀름 (나무) */
+#space-15::before { content: "✈️"; } /* 콩코드 여객기 */
+#space-16::before { content: "🧀"; } /* 취리히 (치즈) */
+#space-17::before { content: "🔑"; }
+#space-18::before { content: "🍺"; } /* 베를린 (맥주) */
+#space-19::before { content: "🍁"; } /* 몬트리올 (단풍) */
+#space-20::before { content: "💖"; }
+#space-21::before { content: "🥩"; } /* 부에노스아이레스 (스테이크) */
+#space-22::before { content: "🔑"; }
+#space-23::before { content: "☕"; } /* 상파울루 (커피) */
+#space-24::before { content: "🦘"; } /* 시드니 (캥거루) */
+#space-25::before { content: "🛳️"; } /* 부산 */
+#space-26::before { content: "🌺"; } /* 하와이 */
+#space-27::before { content: "🚋"; } /* 리스본 (트램) */
+#space-28::before { content: "🚢"; } /* 퀸엘리자베스호 */
+#space-29::before { content: "🐂"; } /* 마드리드 (황소) */
+#space-30::before { content: "🚀"; }
+#space-31::before { content: "🍣"; } /* 도쿄 (초밥) */
+#space-32::before { content: "🛸"; } /* 콜롬비아호 */
+#space-33::before { content: "🥐"; } /* 파리 (크루아상) */
+#space-34::before { content: "🍕"; } /* 로마 (피자) */
+#space-35::before { content: "🔑"; }
+#space-36::before { content: "💂"; } /* 런던 (근위병) */
+#space-37::before { content: "🗽"; } /* 뉴욕 (자유의여신상) */
+#space-38::before { content: "💰"; } /* 사회복지기금 접수처 */
+/*
+#space-39::before { content: "🐯"; } */ /* 서울 (호랑이) */
+#space-39::before { content: "KR"; } /* 서울 (호랑이) */
+
+/* 배경 위에 글자가 선명하게 보이도록 설정 */
+.space .name, .space .price {
+  position: relative;
+  z-index: 1;
 }
 
 /* 정중앙 컨트롤 패널 (9x9) */
@@ -127,12 +194,17 @@ body {
 }
 
 .token {
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.5);
+  border: 2px solid;
+  background-color: white;
   box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
   z-index: 5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
 }
 
 .token.bouncing {
