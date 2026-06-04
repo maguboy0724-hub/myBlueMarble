@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>우리 가족 부루마블</title>
+  <title>시강이네 부루마블</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,57 +13,89 @@
       
       <!-- 1. 플레이어 설정 화면 (최초 화면) -->
       <div id="setup-screen">
-        <h1 style="text-align:center; margin-bottom: 10px;">부루마블</h1>
+        <h1 style="text-align:center; margin-bottom: 10px;">시강이네 부루마블</h1>
         <p style="margin-bottom: 20px;">플레이어를 확인하고 게임을 시작하세요.</p>
         
         <div id="player-setup">
           <div class="draggable-item" draggable="true">
             <span class="drag-handle">⠿</span>
-            <select class="player-char" style="margin-right: 5px; font-size: 1.2rem; border: none; background: transparent; cursor: pointer;">
+            <select class="player-char" style="margin-right: 5px; font-size: 2.5rem; border: none; background: transparent; cursor: pointer;">
               <option value="🍄" selected>🍄</option>
               <option value="🐢">🐢</option>
               <option value="👸">👸</option>
               <option value="🦖">🦖</option>
               <option value="🌟">🌟</option>
               <option value="🐲">🐲</option>
+              <option value="🦄">🦄</option>
+              <option value="🦊">🦊</option>
+              <option value="🐧">🐧</option>
+              <option value="👽">👽</option>
             </select>
             <input type="text" value="아빠" class="player-input">
+            <label class="custom-checkbox-label" title="게임 참여 여부">
+              <input type="checkbox" class="player-active" checked>
+              <div class="check-icon"></div>
+            </label>
           </div>
           <div class="draggable-item" draggable="true">
             <span class="drag-handle">⠿</span>
-            <select class="player-char" style="margin-right: 5px; font-size: 1.2rem; border: none; background: transparent; cursor: pointer;">
+            <select class="player-char" style="margin-right: 5px; font-size: 2.5rem; border: none; background: transparent; cursor: pointer;">
               <option value="🍄">🍄</option>
               <option value="🐢" selected>🐢</option>
               <option value="👸">👸</option>
               <option value="🦖">🦖</option>
               <option value="🌟">🌟</option>
               <option value="🐲">🐲</option>
+              <option value="🦄">🦄</option>
+              <option value="🦊">🦊</option>
+              <option value="🐧">🐧</option>
+              <option value="👽">👽</option>
             </select>
             <input type="text" value="엄마" class="player-input">
+            <label class="custom-checkbox-label" title="게임 참여 여부">
+              <input type="checkbox" class="player-active" checked>
+              <div class="check-icon"></div>
+            </label>
           </div>
           <div class="draggable-item" draggable="true">
             <span class="drag-handle">⠿</span>
-            <select class="player-char" style="margin-right: 5px; font-size: 1.2rem; border: none; background: transparent; cursor: pointer;">
+            <select class="player-char" style="margin-right: 5px; font-size: 2.5rem; border: none; background: transparent; cursor: pointer;">
               <option value="🍄">🍄</option>
               <option value="🐢">🐢</option>
               <option value="👸" selected>👸</option>
               <option value="🦖">🦖</option>
               <option value="🌟">🌟</option>
               <option value="🐲">🐲</option>
+              <option value="🦄">🦄</option>
+              <option value="🦊">🦊</option>
+              <option value="🐧">🐧</option>
+              <option value="👽">👽</option>
             </select>
             <input type="text" value="시현" class="player-input">
+            <label class="custom-checkbox-label" title="게임 참여 여부">
+              <input type="checkbox" class="player-active" checked>
+              <div class="check-icon"></div>
+            </label>
           </div>
           <div class="draggable-item" draggable="true">
             <span class="drag-handle">⠿</span>
-            <select class="player-char" style="margin-right: 5px; font-size: 1.2rem; border: none; background: transparent; cursor: pointer;">
+            <select class="player-char" style="margin-right: 5px; font-size: 2.5rem; border: none; background: transparent; cursor: pointer;">
               <option value="🍄">🍄</option>
               <option value="🐢">🐢</option>
               <option value="👸">👸</option>
               <option value="🦖" selected>🦖</option>
               <option value="🌟">🌟</option>
               <option value="🐲">🐲</option>
+              <option value="🦄">🦄</option>
+              <option value="🦊">🦊</option>
+              <option value="🐧">🐧</option>
+              <option value="👽">👽</option>
             </select>
             <input type="text" value="강현" class="player-input">
+            <label class="custom-checkbox-label" title="게임 참여 여부">
+              <input type="checkbox" class="player-active" checked>
+              <div class="check-icon"></div>
+            </label>
           </div>
         </div>
 
@@ -88,10 +120,6 @@
 
       <!-- 2. 점수판 (게임 시작 시 등장) -->
       <div id="scoreboard" style="display: none; width: 90%; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 20px; font-weight: bold; font-size: 1.8rem;">
-        <span id="score-0">아빠: 500만</span>
-        <span id="score-1">엄마: 500만</span>
-        <span id="score-2">시현: 500만</span>
-        <span id="score-3">강윤: 500만</span>
       </div>
 
       <!-- 3. 주사위 입력 화면 -->

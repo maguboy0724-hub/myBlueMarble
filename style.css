@@ -193,8 +193,8 @@ body {
 }
 
 .token {
-  width: 24px;
-  height: 24px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 2px solid;
   background-color: white;
@@ -203,7 +203,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 14px;
+  font-size: 24px;
 }
 
 .token.bouncing {
@@ -378,4 +378,63 @@ body {
 @keyframes modal-pop-in {
   0% { opacity: 0; transform: scale(0.8); }
   100% { opacity: 1; transform: scale(1); }
+}
+
+/* 커스텀 체크박스 (이미지 형태) */
+.custom-checkbox-label {
+  cursor: pointer;
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
+}
+.custom-checkbox-label input {
+  display: none;
+}
+.custom-checkbox-label .check-icon {
+  width: 36px;
+  height: 36px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ccc"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>');
+  background-size: cover;
+  transition: transform 0.2s, filter 0.2s;
+  filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2));
+}
+.custom-checkbox-label input:checked + .check-icon {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234CAF50"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>');
+}
+.custom-checkbox-label:hover .check-icon {
+  transform: scale(1.1);
+}
+
+.hands-anim {
+  position: absolute;
+  bottom: -15%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 320px;
+  z-index: 999;
+  animation: throw-hands 0.8s ease-out forwards;
+}
+@keyframes throw-hands {
+  0% { transform: translateX(-50%) translateY(100px) scale(0.5); opacity: 0; }
+  20% { transform: translateX(-50%) translateY(0px) scale(1); opacity: 1; }
+  40% { transform: translateX(-50%) translateY(-50px) scale(1.1); opacity: 1; }
+  60% { transform: translateX(-50%) translateY(20px) scale(1); opacity: 0.5; }
+  100% { transform: translateX(-50%) translateY(100px) scale(0.5); opacity: 0; }
+}
+
+.selected-build {
+  background-color: #4CAF50 !important;
+  color: white;
+  border-color: #4CAF50 !important;
+}
+
+.stamp-anim {
+  animation: stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  opacity: 0;
+}
+
+@keyframes stamp {
+  0% { opacity: 0; transform: scale(5) translateY(-20px); }
+  50% { opacity: 1; transform: scale(0.8) translateY(5px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
 }

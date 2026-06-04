@@ -17,6 +17,76 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // --- 2. 전역 변수 설정 ---
+window.audioCtx = null;
+window.initAudio = () => {
+  if (!window.audioCtx) {
+    window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+};
+window.playTone = (freq, type, duration, vol=0.1) => {
+  if (!window.audioCtx) return;
+  if (window.audioCtx.state === 'suspended') window.audioCtx.resume();
+  const osc = window.audioCtx.createOscillator();
+  const gain = window.audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, window.audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, window.audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, window.audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(window.audioCtx.destination);
+  osc.start();
+  osc.stop(window.audioCtx.currentTime + duration);
+};
+window.playSound = {
+  move: () => window.playTone(600, 'sine', 0.1, 0.05),
+  dice: () => {
+    for(let i=0; i<6; i++) setTimeout(() => window.playTone(300+Math.random()*300, 'square', 0.05, 0.05), i*100);
+  },
+  coin: () => {
+    window.playTone(987.77, 'sine', 0.1, 0.1); 
+    setTimeout(() => window.playTone(1318.51, 'sine', 0.3, 0.1), 100);
+  },
+  build: () => {
+    window.playTone(150, 'square', 0.2, 0.1);
+    window.playTone(100, 'sawtooth', 0.2, 0.1);
+  },
+  alert: () => window.playTone(440, 'sine', 0.2, 0.1),
+  error: () => window.playTone(200, 'sawtooth', 0.4, 0.1),
+  start: () => {
+    // 파이널 판타지 승리 팡파르 🎺 (빠바바밤~ 빠바바밤~ 빠바바밤빠바~ 빠밤~)
+    const t = 'square';
+    const melody = [
+      // 빠-빠-빠 빠암~
+      { f: 493.88, d: 0.08, t: 0 },
+      { f: 493.88, d: 0.08, t: 100 },
+      { f: 493.88, d: 0.08, t: 200 },
+      { f: 493.88, d: 0.35, t: 300 },
+      // 빠-빠-빠 빠암~
+      { f: 392.00, d: 0.08, t: 700 },
+      { f: 392.00, d: 0.08, t: 800 },
+      { f: 392.00, d: 0.08, t: 900 },
+      { f: 392.00, d: 0.35, t: 1000 },
+      // 빠-빠-빠 빠암~
+      { f: 440.00, d: 0.08, t: 1400 },
+      { f: 440.00, d: 0.08, t: 1500 },
+      { f: 440.00, d: 0.08, t: 1600 },
+      { f: 440.00, d: 0.12, t: 1700 },
+      // 올라가는 마무리 빠바바밤~!
+      { f: 392.00, d: 0.12, t: 1850 },
+      { f: 440.00, d: 0.12, t: 2000 },
+      { f: 493.88, d: 0.12, t: 2150 },
+      { f: 523.25, d: 0.12, t: 2300 },
+      { f: 587.33, d: 0.5,  t: 2450 },
+    ];
+    melody.forEach(n => setTimeout(() => window.playTone(n.f, t, n.d, 0.12), n.t));
+  },
+  despair: () => {
+    setTimeout(() => window.playTone(150, 'sawtooth', 0.6, 0.15), 0);
+    setTimeout(() => window.playTone(130, 'sawtooth', 0.6, 0.15), 600);
+    setTimeout(() => window.playTone(110, 'sawtooth', 0.6, 0.15), 1200);
+    setTimeout(() => window.playTone(80, 'sawtooth', 1.5, 0.2), 1800);
+  }
+};
 window.boardData = [];
 window.players = [];
 window.currentPlayerIndex = 0;
@@ -36,6 +106,7 @@ window.alertQueue = [];
 window.isAlertShowing = false;
 
 window.showCustomAlert = (msg) => {
+  if (window.playSound) window.playSound.alert();
   window.alertQueue.push(msg);
   window.processAlertQueue();
 };
@@ -250,6 +321,8 @@ function drawTokens() {
 // --- 6. 게임 시작 로직 ---
 window.startGame = () => {
   if (window.boardData.length === 0) return;
+  if (window.initAudio) window.initAudio();
+  if (window.playSound) window.playSound.start();
 
   const modeRadios = document.getElementsByName('gameMode');
   for (let radio of modeRadios) {
@@ -271,14 +344,41 @@ window.startGame = () => {
 
   const inputs = document.querySelectorAll('.player-input');
   const chars = document.querySelectorAll('.player-char');
+  const actives = document.querySelectorAll('.player-active');
   const colors = ["#FF5252", "#448AFF", "#FFC107", "#4CAF50"];
   window.socialFund = 0;
-  window.players = [
-    { id: 0, name: inputs[0].value, char: chars[0].value, position: 0, color: colors[0], money: startMoney, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 },
-    { id: 1, name: inputs[1].value, char: chars[1].value, position: 0, color: colors[1], money: startMoney, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 },
-    { id: 2, name: inputs[2].value, char: chars[2].value, position: 0, color: colors[2], money: startMoney, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 },
-    { id: 3, name: inputs[3].value, char: chars[3].value, position: 0, color: colors[3], money: startMoney, islandTurns: 0, isSpaceTravel: false, bankrupt: false, exemptionCards: 0 }
-  ];
+  window.players = [];
+  
+  let pId = 0;
+  for (let i = 0; i < 4; i++) {
+    if (actives[i].checked) {
+      window.players.push({
+        id: pId++,
+        name: inputs[i].value,
+        char: chars[i].value,
+        position: 0,
+        color: colors[i],
+        money: startMoney,
+        islandTurns: 0,
+        isSpaceTravel: false,
+        bankrupt: false,
+        exemptionCards: 0
+      });
+    }
+  }
+
+  if (window.players.length < 2) {
+    showCustomAlert("최소 2명의 플레이어를 선택해주세요.");
+    return;
+  }
+
+  const scoreboard = document.getElementById('scoreboard');
+  scoreboard.innerHTML = '';
+  window.players.forEach(p => {
+    const span = document.createElement('span');
+    span.id = `score-${p.id}`;
+    scoreboard.appendChild(span);
+  });
 
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('scoreboard').style.display = 'flex';
@@ -365,6 +465,7 @@ function updateTurnUI() {
 
 // --- 주사위 굴리기 애니메이션 (자동 모드 전용) ---
 window.autoRollDice = () => {
+  if (window.playSound) window.playSound.dice();
   const btn = document.getElementById('auto-roll-btn');
   btn.disabled = true;
   btn.style.animation = 'none';
@@ -380,6 +481,11 @@ window.autoRollDice = () => {
   
   overlay.appendChild(die1);
   overlay.appendChild(die2);
+
+  const hands = document.createElement('div');
+  hands.className = 'hands-anim';
+  hands.innerText = '👐';
+  overlay.appendChild(hands);
 
   // 2초 동안 주사위가 랜덤하게 튀는 애니메이션
   let rollInterval = setInterval(() => {
@@ -465,6 +571,7 @@ window.movePlayer = () => {
   window.movingPlayerId = currentPlayer.id;
 
   const moveInterval = setInterval(() => {
+    if (window.playSound) window.playSound.move();
     currentPlayer.position = (currentPlayer.position + 1) % 40;
     
     // 출발지 통과 시 20만원 월급
@@ -533,6 +640,7 @@ window.handleLandEvent = (player, isDouble) => {
       `;
     } else if (currentSpace.owner !== player.id) {
       // 남의 땅
+      if (window.playSound) window.playSound.despair();
       const owner = window.players[currentSpace.owner];
       let totalToll = currentSpace.toll_land || 5; 
       const b = currentSpace.buildings || {};
@@ -552,6 +660,7 @@ window.handleLandEvent = (player, isDouble) => {
     } else {
       if (currentSpace.type === 'city') {
         // 내 땅 (건물 짓기)
+        window.pendingBuildings = { villa: false, building: false, hotel: false };
         const b = currentSpace.buildings || {};
         let buildHTML = '';
         
@@ -559,16 +668,16 @@ window.handleLandEvent = (player, isDouble) => {
         const pBldg = currentSpace.price_building || 20;
         const pHotel = currentSpace.price_hotel || 30;
   
-        if (!b.villa) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'villa', ${pVilla}, ${isDouble})">⛺별장(${pVilla}만)</button>`;
-        if (!b.building) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'building', ${pBldg}, ${isDouble})">🏢빌딩(${pBldg}만)</button>`;
-        if (!b.hotel) buildHTML += `<button class="build-btn" onclick="buildBuilding(${spaceIndex}, 'hotel', ${pHotel}, ${isDouble})">🏨호텔(${pHotel}만)</button>`;
+        if (!b.villa) buildHTML += `<button id="build-btn-villa" class="build-btn" onclick="toggleBuildingSelection('villa')">⛺별장(${pVilla}만)</button>`;
+        if (!b.building) buildHTML += `<button id="build-btn-building" class="build-btn" onclick="toggleBuildingSelection('building')">🏢빌딩(${pBldg}만)</button>`;
+        if (!b.hotel) buildHTML += `<button id="build-btn-hotel" class="build-btn" onclick="toggleBuildingSelection('hotel')">🏨호텔(${pHotel}만)</button>`;
   
         if (buildHTML === '') {
           descEl.innerText = "더 이상 지을 건물이 없습니다. 편히 쉬세요!";
           btnEl.innerHTML = `<button class="start-btn" onclick="endTurn(${isDouble})">확인</button>`;
         } else {
           descEl.innerText = "내 영지입니다! 건물을 추가하시겠습니까?";
-          btnEl.innerHTML = buildHTML + `<br><br><button class="start-btn" style="background-color: #9e9e9e;" onclick="endTurn(${isDouble})">건설 안 함</button>`;
+          btnEl.innerHTML = buildHTML + `<br><br><button id="finish-build-btn" class="start-btn" style="background-color: #9e9e9e;" onclick="commitBuildings(${spaceIndex}, ${isDouble})">건설 안 함</button>`;
         }
       } else {
         descEl.innerText = "특수 시설(휴양지/여객기)입니다. 건물은 지을 수 없습니다.";
@@ -609,6 +718,7 @@ window.buyLand = (spaceId, price, isDouble) => {
   const player = window.players[window.currentPlayerIndex];
   
   if (window.gameMode === 'normal' || player.money >= price) {
+    if (window.playSound) window.playSound.coin();
     if (window.gameMode !== 'normal') player.money = Number((player.money - price).toFixed(2)); 
     window.boardData[spaceId].owner = player.id; 
     window.boardData[spaceId].buildings = { villa: false, building: false, hotel: false };
@@ -627,37 +737,88 @@ window.buyLand = (spaceId, price, isDouble) => {
   }
 };
 
-// --- 9. 건물 짓기 ---
-window.buildBuilding = (spaceId, type, price, isDouble) => {
+// --- 9. 건물 짓기 (토글 및 진행) ---
+window.toggleBuildingSelection = (type) => {
+  window.pendingBuildings[type] = !window.pendingBuildings[type];
+  const btn = document.getElementById(`build-btn-${type}`);
+  if (window.pendingBuildings[type]) {
+    btn.classList.add('selected-build');
+  } else {
+    btn.classList.remove('selected-build');
+  }
+  
+  const finishBtn = document.getElementById('finish-build-btn');
+  const hasSelection = Object.values(window.pendingBuildings).some(v => v);
+  if (hasSelection) {
+    finishBtn.innerText = '건설 진행';
+    finishBtn.style.backgroundColor = '#4CAF50';
+  } else {
+    finishBtn.innerText = '건설 안 함';
+    finishBtn.style.backgroundColor = '#9e9e9e';
+  }
+};
+
+window.commitBuildings = (spaceId, isDouble) => {
+  const hasSelection = Object.values(window.pendingBuildings).some(v => v);
+  if (!hasSelection) {
+    endTurn(isDouble);
+    return;
+  }
+  
   const player = window.players[window.currentPlayerIndex];
   const space = window.boardData[spaceId];
-
-  if (window.gameMode === 'normal' || player.money >= price) {
-    if (window.gameMode !== 'normal') player.money = Number((player.money - price).toFixed(2));
-    space.buildings[type] = true;
-    
-    const spaceEl = document.getElementById(`space-${spaceId}`);
-    let bContainer = spaceEl.querySelector('.building-container');
-    if (!bContainer) {
-      bContainer = document.createElement('div');
-      bContainer.className = 'building-container';
-      spaceEl.appendChild(bContainer);
-    }
-    
-    const marker = document.createElement('div');
-    marker.className = 'building-marker';
-    if (type === 'villa') marker.innerText = '⛺';
-    if (type === 'building') marker.innerText = '🏢';
-    if (type === 'hotel') marker.innerText = '🏨';
-    
-    bContainer.appendChild(marker);
-    updateScoreBoard();
-    
-    // 지은 후에도 다른 건물을 지을 수 있도록 다시 호출
-    handleLandEvent(player, isDouble);
-  } else {
-    showCustomAlert("자금이 부족하여 건설할 수 없습니다.");
+  let totalCost = 0;
+  
+  const pVilla = space.price_villa || 10;
+  const pBldg = space.price_building || 20;
+  const pHotel = space.price_hotel || 30;
+  
+  if (window.pendingBuildings.villa) totalCost += pVilla;
+  if (window.pendingBuildings.building) totalCost += pBldg;
+  if (window.pendingBuildings.hotel) totalCost += pHotel;
+  
+  if (window.gameMode !== 'normal' && player.money < totalCost) {
+    showCustomAlert(`자금이 부족합니다! (필요: ${totalCost}만, 보유: ${player.money}만)`);
+    return;
   }
+  
+  if (window.gameMode !== 'normal') player.money = Number((player.money - totalCost).toFixed(2));
+  
+  const spaceEl = document.getElementById(`space-${spaceId}`);
+  let bContainer = spaceEl.querySelector('.building-container');
+  if (!bContainer) {
+    bContainer = document.createElement('div');
+    bContainer.className = 'building-container';
+    spaceEl.appendChild(bContainer);
+  }
+  
+  let animDelay = 0;
+  const types = ['villa', 'building', 'hotel'];
+  const emojis = { villa: '⛺', building: '🏢', hotel: '🏨' };
+  
+  // Disable buttons while animating
+  document.getElementById('action-buttons').style.pointerEvents = 'none';
+  
+  types.forEach(type => {
+    if (window.pendingBuildings[type]) {
+      space.buildings[type] = true;
+      setTimeout(() => {
+        if (window.playSound) window.playSound.build();
+        const marker = document.createElement('div');
+        marker.className = 'building-marker stamp-anim';
+        marker.innerText = emojis[type];
+        bContainer.appendChild(marker);
+      }, animDelay);
+      animDelay += 300;
+    }
+  });
+  
+  updateScoreBoard();
+  
+  setTimeout(() => {
+    document.getElementById('action-buttons').style.pointerEvents = 'auto';
+    endTurn(isDouble);
+  }, animDelay + 200);
 };
 
 // --- 10. 통행료 지불 ---
